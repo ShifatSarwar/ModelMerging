@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import torch.multiprocessing as mp
 
 # Assign GPU for process
-gpuCore = 1
+gpuCore = 0
 # Assign Number of epochs
 epochs = 100
 # Choose Dataset
@@ -113,57 +113,64 @@ class ImageClassificationBase(nn.Module):
     def training_step(self, batch):
         images, labels = batch 
         out = self(images)                  # Generate predictions
-        loss_resnet101 = F.cross_entropy(out[0], labels) # Calculate loss
-        loss_resnet152 = F.cross_entropy(out[1], labels) # Calculate loss
-        return loss_resnet101, loss_resnet152
+        loss_resnet18 = F.cross_entropy(out[0], labels) # Calculate loss
+        loss_vgg16 = F.cross_entropy(out[1], labels) # Calculate loss
+        loss_vgg19 = F.cross_entropy(out[2], labels) # Calculate loss
+        return loss_resnet18, loss_vgg16, loss_vgg19
     
     def validation_step(self, batch):
         images, labels = batch 
         out = self(images)                    # Generate predictions
+        loss_resnet18 = F.cross_entropy(out[0], labels) # Calculate loss
+        loss_vgg16 = F.cross_entropy(out[1], labels) # Calculate loss
+        loss_vgg19 = F.cross_entropy(out[2], labels) # Calculate loss
+        acc_resnet18 = accuracy(out[0], labels)           # Calculate accuracy
+        acc_vgg16 = accuracy(out[1], labels)
+        acc_vgg19 = accuracy(out[2], labels)
 
-        loss_resnet101 = F.cross_entropy(out[0], labels) # Calculate loss
-        loss_resnet152 = F.cross_entropy(out[1], labels) # Calculate loss
-        
-        acc_resnet101 = accuracy(out[0], labels)           # Calculate accuracy
-        acc_resnet152 = accuracy(out[1], labels)           # Calculate accuracy
-        
-        return [{'val_loss_resnet101': loss_resnet101.detach(), 'val_acc_resnet101': acc_resnet101},
-                   {'val_loss_resnet152': loss_resnet152.detach(), 'val_acc_resnet152': acc_resnet152}]
-                   
+        return [{'val_loss_resnet18': loss_resnet18.detach(), 'val_acc_resnet18': acc_resnet18},
+                   {'val_loss_vgg16': loss_vgg16.detach(), 'val_acc_vgg16': acc_vgg16},
+                   {'val_loss_vgg19': loss_vgg19.detach(), 'val_acc_vgg19': acc_vgg19}]
+    
 
     def validation_epoch_end(self, outputs):
-        
-        batch_losses_resnet101 = [x[0]['val_loss_resnet101'] for x in outputs]
-        epoch_loss_resnet101 = torch.stack(batch_losses_resnet101).mean()   # Combine losses
-        batch_accs_resnet101 = [x[0]['val_acc_resnet101'] for x in outputs]
-        epoch_acc_resnet101 = torch.stack(batch_accs_resnet101).mean()      # Combine accuracies
+        batch_losses_resnet18 = [x[0]['val_loss_resnet18'] for x in outputs]
+        epoch_loss_resnet18 = torch.stack(batch_losses_resnet18).mean()   # Combine losses
+        batch_accs_resnet18 = [x[0]['val_acc_resnet18'] for x in outputs]
+        epoch_acc_resnet18 = torch.stack(batch_accs_resnet18).mean()      # Combine accuracies
 
-        batch_losses_resnet152 = [x[1]['val_loss_resnet152'] for x in outputs]
-        epoch_loss_resnet152 = torch.stack(batch_losses_resnet152).mean()   # Combine losses
-        batch_accs_resnet152 = [x[1]['val_acc_resnet152'] for x in outputs]
-        epoch_acc_resnet152 = torch.stack(batch_accs_resnet152).mean()      # Combine accuracies
+        batch_losses_vgg16 = [x[1]['val_loss_vgg16'] for x in outputs]
+        epoch_loss_vgg16 = torch.stack(batch_losses_vgg16).mean()   # Combine losses
+        batch_accs_vgg16 = [x[1]['val_acc_vgg16'] for x in outputs]
+        epoch_acc_vgg16 = torch.stack(batch_accs_vgg16).mean()      # Combine accuracies
 
-        
-        return [{'val_loss_resnet101': epoch_loss_resnet101.item(), 'val_acc_resnet101': epoch_acc_resnet101.item()},
-                  {'val_loss_resnet152': epoch_loss_resnet152.item(), 'val_acc_resnet152': epoch_acc_resnet152.item()}]
-       
+        batch_losses_vgg19 = [x[2]['val_loss_vgg19'] for x in outputs]
+        epoch_loss_vgg19 = torch.stack(batch_losses_vgg19).mean()   # Combine losses
+        batch_accs_vgg19 = [x[2]['val_acc_vgg19'] for x in outputs]
+        epoch_acc_vgg19 = torch.stack(batch_accs_vgg19).mean()      # Combine accuracies
+
+        return [{'val_loss_resnet18': epoch_loss_resnet18.item(), 'val_acc_resnet18': epoch_acc_resnet18.item()},
+                  {'val_loss_vgg16': epoch_loss_vgg16.item(), 'val_acc_vgg16': epoch_acc_vgg16.item()},
+                  {'val_loss_vgg19': epoch_loss_vgg19.item(), 'val_acc_vgg19': epoch_acc_vgg19.item()}]
+
     def epoch_end(self, epoch, results, val, start_time):
         timeSet = [25,50,75,100,150]
         if epoch in timeSet:
             timeTaken = time.time()-start_time
             dataLine = val+','+str(epoch)+','+str(timeTaken)
             addLine('dataList/list.csv',dataLine)
-       
-        result = results[0]
-        print("Epoch [{}], last_lr_resnet101: {:.5f}, train_loss_resnet101: {:.4f}, val_loss_resnet101: {:.4f}, val_acc_resnet101: {:.4f}".format(
-            epoch, result['lrs_resnet101'][-1], result['train_loss_resnet101'], result['val_loss_resnet101'], result['val_acc_resnet101']))
-        print("---------------------------------------------------------------------------------------------------")
-
-        result = results[1]
-        print("Epoch [{}], last_lr_resnet152: {:.5f}, train_loss_resnet152: {:.4f}, val_loss_resnet152: {:.4f}, val_acc_resnet152: {:.4f}".format(
-            epoch, result['lrs_resnet152'][-1], result['train_loss_resnet152'], result['val_loss_resnet152'], result['val_acc_resnet152']))
-        print("---------------------------------------------------------------------------------------------------")
         
+        result = results[0]
+        print("Epoch [{}], last_lr_resnet18: {:.5f}, train_loss_resnet18: {:.4f}, val_loss_resnet18: {:.4f}, val_acc_resnet18: {:.4f}".format(
+            epoch, result['lrs_resnet18'][-1], result['train_loss_resnet18'], result['val_loss_resnet18'], result['val_acc_resnet18']))
+        print("---------------------------------------------------------------------------------------------------")
+        result = results[1]
+        print("Epoch [{}], last_lr_vgg16: {:.5f}, train_loss_vgg16: {:.4f}, val_loss_vgg16: {:.4f}, val_acc_vgg16: {:.4f}".format(
+            epoch, result['lrs_vgg16'][-1], result['train_loss_vgg16'], result['val_loss_vgg16'], result['val_acc_vgg16']))
+        print("---------------------------------------------------------------------------------------------------")
+        result = results[2]
+        print("Epoch [{}], last_lr_vgg19: {:.5f}, train_loss_vgg19: {:.4f}, val_loss_vgg19: {:.4f}, val_acc_vgg19: {:.4f}".format(
+            epoch, result['lrs_vgg19'][-1], result['train_loss_vgg19'], result['val_loss_vgg19'], result['val_acc_vgg19']))
 
 cfg = {
     'VGG11': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
@@ -232,33 +239,29 @@ class Bottleneck(nn.Module):
 
 
 class HybridModel(ImageClassificationBase):
-    def __init__(self, block=Bottleneck, num_blocks=[2, 2, 2, 2], num_classes=10, num_channel=3, vgg_name='VGG16'):
+    def __init__(self, block=BasicBlock, num_blocks=[2, 2, 2, 2], num_classes=10, num_channel=3, vgg_name='VGG16'):
         super(HybridModel, self).__init__()
         
-        
-        # # ResNet-101 Model Definition
-        num_blocks = [3, 4, 23, 3]
+        # ResNet-18 Model Definition
         self.in_planes_resnet = 64
-        self.conv1_resnet_3 = nn.Conv2d(num_channel, 64, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn1_resnet_3 = nn.BatchNorm2d(64)
-        self.layer1_resnet_3 = self._make_layer_resnet(block, 64, num_blocks[0], stride=1)
-        self.layer2_resnet_3 = self._make_layer_resnet(block, 128, num_blocks[1], stride=2)
-        self.layer3_resnet_3 = self._make_layer_resnet(block, 256, num_blocks[2], stride=2)
-        self.layer4_resnet_3 = self._make_layer_resnet(block, 512, num_blocks[3], stride=2)
-        self.linear_resnet_3 = nn.Linear(512*block.expansion, num_classes)
+        self.conv1_resnet = nn.Conv2d(num_channel, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn1_resnet = nn.BatchNorm2d(64)
+        self.layer1_resnet = self._make_layer_resnet(block, 64, num_blocks[0], stride=1)
+        self.layer2_resnet = self._make_layer_resnet(block, 128, num_blocks[1], stride=2)
+        self.layer3_resnet = self._make_layer_resnet(block, 256, num_blocks[2], stride=2)
+        self.layer4_resnet = self._make_layer_resnet(block, 512, num_blocks[3], stride=2)
+        self.linear_resnet = nn.Linear(512*block.expansion, num_classes)
         
-        # # ResNet-152 Model Definition
-        num_blocks = [3, 8, 36, 3]
-        self.in_planes_resnet = 64
-        self.conv1_resnet_4 = nn.Conv2d(num_channel, 64, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn1_resnet_4 = nn.BatchNorm2d(64)
-        self.layer1_resnet_4 = self._make_layer_resnet(block, 64, num_blocks[0], stride=1)
-        self.layer2_resnet_4 = self._make_layer_resnet(block, 128, num_blocks[1], stride=2)
-        self.layer3_resnet_4 = self._make_layer_resnet(block, 256, num_blocks[2], stride=2)
-        self.layer4_resnet_4 = self._make_layer_resnet(block, 512, num_blocks[3], stride=2)
-        self.linear_resnet_4 = nn.Linear(512*block.expansion, num_classes)
+        # VGG16 Model Definition
+        vgg_name = 'VGG11'
+        self.features_vgg = self._make_layers_vgg(cfg[vgg_name], num_channel)
+        self.classifier_vgg = nn.Linear(512, num_classes)
         
-       
+        # VGG19 Model Definition
+        vgg_name = 'VGG13'
+        self.features_vgg_2 = self._make_layers_vgg(cfg[vgg_name], num_channel)
+        self.classifier_vgg_2 = nn.Linear(512, num_classes)
+
     def _make_layer_resnet(self, block, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)
         layers = []
@@ -282,28 +285,24 @@ class HybridModel(ImageClassificationBase):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+        out_resnet_18 = F.relu(self.bn1_resnet(self.conv1_resnet(x)))
+        out_resnet_18 = self.layer1_resnet(out_resnet_18)
+        out_resnet_18 = self.layer2_resnet(out_resnet_18)
+        out_resnet_18 = self.layer3_resnet(out_resnet_18)
+        out_resnet_18 = self.layer4_resnet(out_resnet_18)
+        out_resnet_18 = F.avg_pool2d(out_resnet_18, 4)
+        out_resnet_18 = out_resnet_18.view(out_resnet_18.size(0), -1)
+        out_resnet_18 = self.linear_resnet(out_resnet_18)
         
-        out_resnet_101 = F.relu(self.bn1_resnet_3(self.conv1_resnet_3(x)))
-        out_resnet_101 = self.layer1_resnet_3(out_resnet_101)
-        out_resnet_101 = self.layer2_resnet_3(out_resnet_101)
-        out_resnet_101 = self.layer3_resnet_3(out_resnet_101)
-        out_resnet_101 = self.layer4_resnet_3(out_resnet_101)
-        out_resnet_101 = F.avg_pool2d(out_resnet_101, 4)
-        out_resnet_101 = out_resnet_101.view(out_resnet_101.size(0), -1)
-        out_resnet_101 = self.linear_resnet_3(out_resnet_101)
+        out_vgg_16 = self.features_vgg(x)
+        out_vgg_16 = out_vgg_16.view(out_vgg_16.size(0), -1)
+        out_vgg_16 = self.classifier_vgg(out_vgg_16)
         
-        out_resnet_152 = F.relu(self.bn1_resnet_4(self.conv1_resnet_4(x)))
-        out_resnet_152 = self.layer1_resnet_4(out_resnet_152)
-        out_resnet_152 = self.layer2_resnet_4(out_resnet_152)
-        out_resnet_152 = self.layer3_resnet_4(out_resnet_152)
-        out_resnet_152 = self.layer4_resnet_4(out_resnet_152)
-        out_resnet_152 = F.avg_pool2d(out_resnet_152, 4)
-        out_resnet_152 = out_resnet_152.view(out_resnet_152.size(0), -1)
-        out_resnet_152 = self.linear_resnet_4(out_resnet_152)
+        out_vgg_19 = self.features_vgg_2(x)
+        out_vgg_19 = out_vgg_19.view(out_vgg_19.size(0), -1)
+        out_vgg_19 = self.classifier_vgg_2(out_vgg_19)
         
-        
-        # return out_resnet_18, out_resnet_50, out_resnet_101, out_resnet_152, out_vgg_16, out_vgg_19, out_vgg_13, out_vgg_11
-        return out_resnet_101, out_resnet_152
+        return out_resnet_18, out_vgg_16, out_vgg_19
 
 model = to_device(HybridModel(num_classes=10, num_channel=3), device)
 
@@ -327,69 +326,101 @@ def fit_one_cycle(epochs, val, start_time, max_lr, model, train_dl, valid_dl,
     torch.cuda.empty_cache()
     history = []
 
-    resnet101_params = []
-    resnet152_params = []
-    
+    resnet18_params = []
+    vgg16_params = []
+    vgg19_params = []
+    # print(type(model.parameters()))
+    # print(model.parameters())
+
     for name, params in model.named_parameters():
-        if '_resnet_3' in name:
-            resnet101_params.append(params)
+        if '_resnet' in name:
+            resnet18_params.append(params)
+        elif '_vgg_2' in name:
+            vgg19_params.append(params)
         else:
-            resnet152_params.append(params)
+            vgg16_params.append(params)
+
+    # model_params=[] 
+    # for x in model.parameters():
+    #     model_params.append(x)
     
         
-    optimizerResnet101 = opt_func(resnet101_params, max_lr, weight_decay=weight_decay)
-    optimizerResnet152 = opt_func(resnet152_params, max_lr, weight_decay=weight_decay)
+#         # Set up cutom optimizer with weight decay
+    optimizerResnet18 = opt_func(resnet18_params, max_lr, weight_decay=weight_decay)
+    optimizerVGG16 = opt_func(vgg16_params, max_lr, weight_decay=weight_decay)
+    optimizerVGG19 = opt_func(vgg19_params, max_lr, weight_decay=weight_decay)
 
-    schedResnet101 = torch.optim.lr_scheduler.OneCycleLR(optimizerResnet101, max_lr, epochs=epochs, 
+    # Set up one-cycle learning rate scheduler
+    schedResnet18 = torch.optim.lr_scheduler.OneCycleLR(optimizerResnet18, max_lr, epochs=epochs, 
                                                 steps_per_epoch=len(train_dl))
-    schedResnet152 = torch.optim.lr_scheduler.OneCycleLR(optimizerResnet152, max_lr, epochs=epochs, 
+    schedVGG16 = torch.optim.lr_scheduler.OneCycleLR(optimizerVGG16, max_lr, epochs=epochs, 
+                                                steps_per_epoch=len(train_dl))
+    schedVGG19 = torch.optim.lr_scheduler.OneCycleLR(optimizerVGG19, max_lr, epochs=epochs, 
                                                 steps_per_epoch=len(train_dl))
     
     for epoch in range(epochs):
         # Training Phase 
         model.train()
-        train_losses_resnet101 = []
-        train_losses_resnet152 = []
-        lrs_resnet101 = []
-        lrs_resnet152 = []
-    
+        train_losses_resnet18 = []
+        train_losses_vgg16 = []
+        train_losses_vgg19 = []
+        lrs_resnet18 = []
+        lrs_vgg16 = []
+        lrs_vgg19 = []
+
         for batch in train_dl:
 
-            # loss_resnet18, loss_resnet50, loss_resnet101, loss_resnet152, loss_vgg16, loss_vgg19, loss_vgg13, loss_vgg11  = model.training_step(batch)
-            loss_resnet101, loss_resnet152 = model.training_step(batch)
+            loss_resnet18, loss_vgg16, loss_vgg19 = model.training_step(batch)
 
-            train_losses_resnet101.append(loss_resnet101)
-            loss_resnet101.backward()
+            train_losses_resnet18.append(loss_resnet18)
+            loss_resnet18.backward()
 
-            train_losses_resnet152.append(loss_resnet152)
-            loss_resnet152.backward()
+            train_losses_vgg16.append(loss_vgg16)
+            loss_vgg16.backward()
 
-            optimizerResnet101.step()
-            optimizerResnet101.zero_grad()
+            train_losses_vgg19.append(loss_vgg19)
+            loss_vgg19.backward()
+            
+            # Gradient clipping
+            # if grad_clip: 
+            #     nn.utils.clip_grad_value_(model.parameters(), grad_clip)
+            
+            optimizerResnet18.step()
+            optimizerResnet18.zero_grad()
 
-            optimizerResnet152.step()
-            optimizerResnet152.zero_grad()
+            optimizerVGG16.step()
+            optimizerVGG16.zero_grad()
 
-            lrs_resnet101.append(get_lr(optimizerResnet101))
-            schedResnet101.step()
+            optimizerVGG19.step()
+            optimizerVGG19.zero_grad()
+            
+            # Record & update learning rate
+            lrs_resnet18.append(get_lr(optimizerResnet18))
+            schedResnet18.step()
 
-            lrs_resnet152.append(get_lr(optimizerResnet152))
-            schedResnet152.step()
+            # Record & update learning rate
+            lrs_vgg16.append(get_lr(optimizerVGG16))
+            schedVGG16.step()
+
+            lrs_vgg19.append(get_lr(optimizerVGG19))
+            schedVGG19.step()
         
         # Validation phase
         result = evaluate(model, valid_dl)
-        result_resnet101 = result[0]
-        result_resnet152 = result[1]
-        
-        result_resnet101['train_loss_resnet101'] = torch.stack(train_losses_resnet101).mean().item()
-        result_resnet101['lrs_resnet101'] = lrs_resnet101
+        result_resnet18 = result[0]
+        result_vgg16 = result[1]
+        result_vgg19 = result[2]
 
-        result_resnet152['train_loss_resnet152'] = torch.stack(train_losses_resnet152).mean().item()
-        result_resnet152['lrs_resnet152'] = lrs_resnet152
+        result_resnet18['train_loss_resnet18'] = torch.stack(train_losses_resnet18).mean().item()
+        result_resnet18['lrs_resnet18'] = lrs_resnet18
 
+        result_vgg16['train_loss_vgg16'] = torch.stack(train_losses_vgg16).mean().item()
+        result_vgg16['lrs_vgg16'] = lrs_vgg16
 
-        # result = [result_resnet18, result_resnet50, result_resnet101, result_resnet152, result_vgg16, result_vgg19, result_vgg13, result_vgg11]
-        result = [result_resnet101, result_resnet152]
+        result_vgg19['train_loss_vgg19'] = torch.stack(train_losses_vgg19).mean().item()
+        result_vgg19['lrs_vgg19'] = lrs_vgg19
+
+        result = [result_resnet18, result_vgg16, result_vgg19]
         model.epoch_end(epoch, result, val, start_time)
         history.append(result)
 

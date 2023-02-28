@@ -14,96 +14,12 @@ from torch.utils.data import random_split
 from memory_profiler import profile
 from torchvision.utils import make_grid
 import matplotlib.pyplot as plt
+from models.dataLoader import *
 # from torchsummary import summary
 
-# Assign GPU for process
-gpuCore = 1
 # Assign Number of epochs
 epochs = 100
-# Choose Dataset
-dataset1 = 'cifar5'
-dataset2 = 'emnist_bymerge'
-dataset3 = ''
-dataset4 = ''
-dataset5 = ''
-# Mode 1 for entire Dataset
-# Mode 2 for half the Dataset
-# Mode 3 for Similar Dataset
-mode = 1
-data_dir = './data/' + dataset1
 
-# Data transforms (normalization & data augmentation)
-stats = ((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-train_tfms = tt.Compose([ tt.ToTensor(), 
-                         tt.Normalize(*stats,inplace=True)])
-valid_tfms = tt.Compose([tt.ToTensor(), tt.Normalize(*stats)])
-
-data_dir_test = './data/' + dataset1
-# PyTorch datasets
-train_ds = ImageFolder(data_dir+'/train', train_tfms)
-valid_ds = ImageFolder(data_dir_test+'/test', valid_tfms)
-
-batch_size = 64
-
-# PyTorch data loaders
-train_dl = DataLoader(train_ds, batch_size, shuffle=True, num_workers=3, pin_memory=True)
-valid_dl = DataLoader(valid_ds, batch_size*2, num_workers=3, pin_memory=True)
-
-
-def addLine(name, line):
-    with open(name, 'a') as f:
-       f.write(line)
-       f.write("\n")
-    f.close()
-
-def show_batch(dl):
-    for images, labels in dl:
-        fig, ax = plt.subplots(figsize=(12, 12))
-        ax.set_xticks([]); ax.set_yticks([])
-        ax.imshow(make_grid(images[:64], nrow=8).permute(1, 2, 0))
-        break
-
-
-def get_params(params, device):
-    new_params = [p.to(device) for p in params]
-    for p in new_params:
-        p.requires_grad_()
-    return new_params
-
-def to_device(data, device):
-    """Move tensor(s) to chosen device"""
-    if isinstance(data, (list,tuple)):
-        return [to_device(x, device) for x in data]
-    return data.to(device, non_blocking=True)
-
-
-
-def get_default_device():
-    """Pick GPU if available, else CPU"""
-    if torch.cuda.is_available():
-        return torch.device('cuda:'+str(gpuCore))
-    else:
-        return torch.device('cpu')
-    
-
-class DeviceDataLoader():
-    """Wrap a dataloader to move data to a device"""
-    def __init__(self, dl, device):
-        self.dl = dl
-        self.device = device
-        
-    def __iter__(self):
-        """Yield a batch of data after moving it to device"""
-        for b in self.dl: 
-            yield to_device(b, self.device)
-
-    def __len__(self):
-        """Number of batches"""
-        return len(self.dl)
-
-device = get_default_device()
-train_dl = DeviceDataLoader(train_dl, device)
-valid_dl = DeviceDataLoader(valid_dl, device)
 
 
 y_pred = []
@@ -222,7 +138,7 @@ class Bottleneck(nn.Module):
 
 
 class ResNet(ImageClassificationBase):
-    def __init__(self, block, num_blocks, num_classes=10, num_channel=3):
+    def __init__(self, block, num_blocks, num_classes, num_channel=3):
         super(ResNet, self).__init__()
         self.in_planes = 64
 
@@ -281,8 +197,13 @@ def test():
     y = net(torch.randn(1, 3, 32, 32))
     print(y.size())
 
+train_dl, valid_dl, device = getTrainTestLoaderCIFAR100()
+# train_dl, valid_dl, device = getTrainTestLoaderCIFAR10()
 
-model = to_device(ResNet50(num_classes=5, num_channel=3), device)
+# Change Num_Class 
+model = to_device(ResNet18(num_classes=100, num_channel=3), device)
+# model = to_device(ResNet50(num_classes=10, num_channel=3), device)
+
 # summary(model, (3,32,32), 64)
 
 # Main evaluator

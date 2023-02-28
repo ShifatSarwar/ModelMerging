@@ -1,7 +1,11 @@
 # from .vgg import *
-# from .resnet import *
+# from .resnetFam1 import *
+# from .vggFam1 import *
 # from .resnetVGGHybrid import *
-# from .resnetVGGdiffDataset import *
+# from .threeModels import *
+# from .denseNet import *
+# from .twoModels import *
+# from .resnetdiffDataset import *
 # from .fourModels import *
 # from .sixModels import *
 # from .eightModels import *
@@ -11,4 +15,7 @@
 # from .resnet100s import *
 # hybrid_net.eval()
 # from .fourModelsSmall import *
-from .tenSmall import *
+# from .tenSmall import *
+# from .tenModels import 
+
+from .resnetv2 import *

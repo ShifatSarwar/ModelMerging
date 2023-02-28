@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import torch.multiprocessing as mp
 
 # Assign GPU for process
-gpuCore = 1
+gpuCore = 0
 # Assign Number of epochs
 epochs = 100
 # Choose Dataset
@@ -232,12 +232,10 @@ class Bottleneck(nn.Module):
 
 
 class HybridModel(ImageClassificationBase):
-    def __init__(self, block=Bottleneck, num_blocks=[2, 2, 2, 2], num_classes=10, num_channel=3, vgg_name='VGG16'):
+    def __init__(self, block=BasicBlock, num_blocks=[2, 2, 2, 2], num_classes=10, num_channel=3, vgg_name='VGG16'):
         super(HybridModel, self).__init__()
         
-        
-        # # ResNet-101 Model Definition
-        num_blocks = [3, 4, 23, 3]
+        # ResNet-18 Model Definition
         self.in_planes_resnet = 64
         self.conv1_resnet_3 = nn.Conv2d(num_channel, 64, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1_resnet_3 = nn.BatchNorm2d(64)
@@ -247,8 +245,8 @@ class HybridModel(ImageClassificationBase):
         self.layer4_resnet_3 = self._make_layer_resnet(block, 512, num_blocks[3], stride=2)
         self.linear_resnet_3 = nn.Linear(512*block.expansion, num_classes)
         
-        # # ResNet-152 Model Definition
-        num_blocks = [3, 8, 36, 3]
+        # ResNet-50 Model Definition
+        num_blocks = [3, 4, 6, 3]
         self.in_planes_resnet = 64
         self.conv1_resnet_4 = nn.Conv2d(num_channel, 64, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1_resnet_4 = nn.BatchNorm2d(64)
@@ -282,28 +280,27 @@ class HybridModel(ImageClassificationBase):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+
+        out_resnet_18 = F.relu(self.bn1_resnet_3(self.conv1_resnet_3(x)))
+        out_resnet_18 = self.layer1_resnet_3(out_resnet_18)
+        out_resnet_18 = self.layer2_resnet_3(out_resnet_18)
+        out_resnet_18 = self.layer3_resnet_3(out_resnet_18)
+        out_resnet_18 = self.layer4_resnet_3(out_resnet_18)
+        out_resnet_18 = F.avg_pool2d(out_resnet_18, 4)
+        out_resnet_18 = out_resnet_18.view(out_resnet_18.size(0), -1)
+        out_resnet_18 = self.linear_resnet_3(out_resnet_18)
         
-        out_resnet_101 = F.relu(self.bn1_resnet_3(self.conv1_resnet_3(x)))
-        out_resnet_101 = self.layer1_resnet_3(out_resnet_101)
-        out_resnet_101 = self.layer2_resnet_3(out_resnet_101)
-        out_resnet_101 = self.layer3_resnet_3(out_resnet_101)
-        out_resnet_101 = self.layer4_resnet_3(out_resnet_101)
-        out_resnet_101 = F.avg_pool2d(out_resnet_101, 4)
-        out_resnet_101 = out_resnet_101.view(out_resnet_101.size(0), -1)
-        out_resnet_101 = self.linear_resnet_3(out_resnet_101)
-        
-        out_resnet_152 = F.relu(self.bn1_resnet_4(self.conv1_resnet_4(x)))
-        out_resnet_152 = self.layer1_resnet_4(out_resnet_152)
-        out_resnet_152 = self.layer2_resnet_4(out_resnet_152)
-        out_resnet_152 = self.layer3_resnet_4(out_resnet_152)
-        out_resnet_152 = self.layer4_resnet_4(out_resnet_152)
-        out_resnet_152 = F.avg_pool2d(out_resnet_152, 4)
-        out_resnet_152 = out_resnet_152.view(out_resnet_152.size(0), -1)
-        out_resnet_152 = self.linear_resnet_4(out_resnet_152)
-        
+        out_resnet_50 = F.relu(self.bn1_resnet_4(self.conv1_resnet_4(x)))
+        out_resnet_50 = self.layer1_resnet_4(out_resnet_50)
+        out_resnet_50 = self.layer2_resnet_4(out_resnet_50)
+        out_resnet_50 = self.layer3_resnet_4(out_resnet_50)
+        out_resnet_50 = self.layer4_resnet_4(out_resnet_50)
+        out_resnet_50 = F.avg_pool2d(out_resnet_50, 4)
+        out_resnet_50 = out_resnet_50.view(out_resnet_50.size(0), -1)
+        out_resnet_50 = self.linear_resnet_4(out_resnet_50)
         
         # return out_resnet_18, out_resnet_50, out_resnet_101, out_resnet_152, out_vgg_16, out_vgg_19, out_vgg_13, out_vgg_11
-        return out_resnet_101, out_resnet_152
+        return out_resnet_18, out_resnet_50
 
 model = to_device(HybridModel(num_classes=10, num_channel=3), device)
 
